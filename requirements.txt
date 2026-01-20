@@ -2,8 +2,8 @@ numpy
 pandas
 pyarrow
 scikit-learn
+python-dotenv
+pydantic
 sentence-transformers
 faiss-cpu
-pydantic
-python-dotenv
 crewai
