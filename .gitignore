@@ -76,7 +76,7 @@ docs/_build/
 target/
 
 # Jupyter Notebook
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 # IPython
 profile_default/
@@ -217,3 +217,9 @@ artifacts/*
 *.npy
 *.index
 *.bin
+
+# LLM / embeddings artifacts
+*.pkl
+*.faiss
+*.jsonl
+*.csv
