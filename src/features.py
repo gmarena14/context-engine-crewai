@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import re
 from dataclasses import dataclass
 from typing import Dict, Any, Tuple
@@ -39,7 +40,7 @@ def _bucket_price(price: float) -> str:
     return "5000+"
 
 
-def build_item_360(items: pd.DataFrame) -> Tuple[pd.DataFrame, HealthReport]:
+def build_item_360(items: pd.DataFrame) -> Tuple[pd.DataFrame, "HealthReport"]:
     """
     Build a compact 360 profile for each item_id, plus a basic health report.
     Expected columns in items:
@@ -50,39 +51,101 @@ def build_item_360(items: pd.DataFrame) -> Tuple[pd.DataFrame, HealthReport]:
     # ---- basic type hygiene ----
     df["item_id"] = df["item_id"].astype(str)
     df["seller_id"] = df["seller_id"].astype(str)
+    df["title"] = df["title"].astype(str)
+
     df["price"] = pd.to_numeric(df["price"], errors="coerce")
     df["available_quantity"] = pd.to_numeric(df["available_quantity"], errors="coerce")
     df["sold_quantity"] = pd.to_numeric(df["sold_quantity"], errors="coerce")
 
-    # tags: ensure list
+    # ----------------------------
+    # tags: normalize to list[str]
+    # ----------------------------
     def normalize_tags(x):
-        if isinstance(x, list):
-            return [str(t).strip().lower() for t in x if str(t).strip()]
-        if pd.isna(x):
+        # None
+        if x is None:
             return []
-        return [str(x).strip().lower()]
+
+        # Scalar NaN (solo si es escalar)
+        if np.isscalar(x) and pd.isna(x):
+            return []
+
+        # list/tuple/set/np.ndarray/pd.Series
+        if isinstance(x, (list, tuple, set, np.ndarray, pd.Series)):
+            out = []
+            for t in list(x):
+                if t is None:
+                    continue
+                if np.isscalar(t) and pd.isna(t):
+                    continue
+                s = str(t).strip().lower()
+                if s:
+                    out.append(s)
+            return out
+
+        # string (a veces viene como "['work','gaming']")
+        if isinstance(x, str):
+            s = x.strip()
+            if not s:
+                return []
+            if s.startswith("[") and s.endswith("]"):
+                try:
+                    parsed = ast.literal_eval(s)
+                    return normalize_tags(parsed)
+                except Exception:
+                    # si no se puede parsear, lo tratamos como tag único
+                    return [s.lower()]
+            return [s.lower()]
+
+        # fallback: cualquier otro objeto
+        s = str(x).strip().lower()
+        return [s] if s else []
 
     df["tags_norm"] = df["tags"].apply(normalize_tags)
 
+    # -----------------------------------
+    # attributes: normalize to dict safely
+    # -----------------------------------
+    def normalize_attributes(a):
+        if a is None:
+            return {}
+        if isinstance(a, dict):
+            return a
+        # scalar NaN
+        if np.isscalar(a) and pd.isna(a):
+            return {}
+        # string JSON-ish
+        if isinstance(a, str):
+            s = a.strip()
+            if not s:
+                return {}
+            try:
+                parsed = ast.literal_eval(s)  # funciona para dicts estilo Python
+                return parsed if isinstance(parsed, dict) else {}
+            except Exception:
+                return {}
+        return {}
+
+    df["attributes_norm"] = df["attributes"].apply(normalize_attributes)
+
     # attributes: extract common fields
-    df["category"] = df["attributes"].apply(lambda d: _safe_get(d, "category"))
-    df["brand"] = df["attributes"].apply(lambda d: _safe_get(d, "brand"))
-    df["model"] = df["attributes"].apply(lambda d: _safe_get(d, "model"))
+    df["category"] = df["attributes_norm"].apply(lambda d: _safe_get(d, "category"))
+    df["brand"] = df["attributes_norm"].apply(lambda d: _safe_get(d, "brand"))
+    df["model"] = df["attributes_norm"].apply(lambda d: _safe_get(d, "model"))
 
     # title signals
     df["title_norm"] = df["title"].astype(str).str.lower().str.strip()
     df["title_len"] = df["title_norm"].str.len()
 
-    # inventory / demand signals
-    df["stock_ratio"] = (df["available_quantity"] + 1) / (df["sold_quantity"] + 1)
-    df["sell_through"] = df["sold_quantity"] / (df["available_quantity"] + df["sold_quantity"] + 1e-9)
+    # inventory / demand signals (evita división por 0)
+    df["stock_ratio"] = (df["available_quantity"].fillna(0) + 1) / (df["sold_quantity"].fillna(0) + 1)
+    denom = (df["available_quantity"].fillna(0) + df["sold_quantity"].fillna(0) + 1e-9)
+    df["sell_through"] = df["sold_quantity"].fillna(0) / denom
 
     # derived
     df["price_bucket"] = df["price"].apply(lambda p: _bucket_price(p) if pd.notna(p) else None)
     df["n_tags"] = df["tags_norm"].apply(len)
 
     # ---- item_360 output (1 row per item_id) ----
-    # En este dataset es 1 row por item_id, pero lo dejamos robusto:
     agg = {
         "title": "first",
         "seller_id": "first",
@@ -108,16 +171,18 @@ def build_item_360(items: pd.DataFrame) -> Tuple[pd.DataFrame, HealthReport]:
 
     missing_pct = (df.isna().mean() * 100).round(2).to_dict()
 
-    price_summary = {
-        "min": float(np.nanmin(df["price"].values)) if df["price"].notna().any() else float("nan"),
-        "p50": float(np.nanmedian(df["price"].values)) if df["price"].notna().any() else float("nan"),
-        "p95": float(np.nanpercentile(df["price"].values, 95)) if df["price"].notna().any() else float("nan"),
-        "max": float(np.nanmax(df["price"].values)) if df["price"].notna().any() else float("nan"),
-    }
+    if df["price"].notna().any():
+        price_vals = df["price"].to_numpy(dtype=float)
+        price_summary = {
+            "min": float(np.nanmin(price_vals)),
+            "p50": float(np.nanmedian(price_vals)),
+            "p95": float(np.nanpercentile(price_vals, 95)),
+            "max": float(np.nanmax(price_vals)),
+        }
+    else:
+        price_summary = {"min": float("nan"), "p50": float("nan"), "p95": float("nan"), "max": float("nan")}
 
-    category_counts = (
-        df["category"].fillna("unknown").value_counts().head(30).to_dict()
-    )
+    category_counts = df["category"].fillna("unknown").value_counts().head(30).to_dict()
 
     report = HealthReport(
         n_rows=n_rows,

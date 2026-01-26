@@ -1,0 +1,22 @@
+{
+  "comparative_summary": "Los productos listados son laptops de varias marcas y modelos con precios que van desde $400 hasta $11,326.99. Sin embargo, la mayoría presentan limitaciones significativas para la edición de video, ya sea por falta de potencia o funcionalidad.",
+  "top_recommendation": {
+    "item_id": "MLA581846989",
+    "reason": "A pesar de no ser ideal para edición de video, la Notebook Lenovo G580 ofrece la mejor combinación de precio y especificaciones, con un Dual Core, 8GB de RAM y un disco duro de 500GB, a un precio económico."
+  },
+  "risk_alerts": [
+    {
+      "item_id": "MLA579554484",
+      "issue": "Precio anormalmente bajo sugiere que podría no estar en condiciones de uso funcional."
+    },
+    {
+      "item_id": "MLA582347833",
+      "issue": "Solo hay una unidad disponible y sin ventas anteriores, lo que indica posible falta de interés o funcionalidad."
+    },
+    {
+      "item_id": "MLA572649647",
+      "issue": "La laptop no funciona, lo que la hace prácticamente inútil para cualquier tarea."
+    }
+  ],
+  "market_insight": "Las opciones de laptops económicas para edición de video están limitadas en Mercado Libre, a menudo presentando compromisos significativos en funcionalidad y rendimiento."
+}

@@ -223,3 +223,8 @@ artifacts/*
 *.faiss
 *.jsonl
 *.csv
+
+
+notebooks/artifacts/
+artifacts/*.pkl
+notebooks/*.pkl
