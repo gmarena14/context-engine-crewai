@@ -42,6 +42,9 @@ Con el contexto recuperado, un LLM (OpenAI) genera una **ficha comparativa** en 
 ### Bloque 4 — Arquitectura (MCP & Escalabilidad) *(pendiente / opcional)*
 Diagrama y diseño de integración con un servidor MCP y estrategia para mantener reputación del vendedor actualizada sin re-indexar todo.
 
+<img width="1178" height="432" alt="image" src="https://github.com/user-attachments/assets/cbca8233-6eed-44f2-9b4f-54d64c7c03d6" />
+
+
 ---
 
 ## Estructura del repositorio
