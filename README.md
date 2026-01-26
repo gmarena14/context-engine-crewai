@@ -42,11 +42,14 @@ Con el contexto recuperado, un LLM (OpenAI) genera una **ficha comparativa** en 
 ### Bloque 4 — Arquitectura (MCP & Escalabilidad) *(pendiente / opcional)*
 Diagrama y diseño de integración con un servidor MCP y estrategia para mantener reputación del vendedor actualizada sin re-indexar todo.
 
-<img width="1178" height="432" alt="image" src="https://github.com/user-attachments/assets/cbca8233-6eed-44f2-9b4f-54d64c7c03d6" />
+<img width="965" height="631" alt="image" src="https://github.com/user-attachments/assets/53427042-63da-4c5e-bd70-8039cf868203" />
+
 
 Pregunta: ¿Cómo asegurarías que los datos del vendedor estén actualizados sin re-indexar?
 
-Respuesta: Utilizaría una estrategia de consulta híbrida en el servidor MCP. Mantengo el índice de vectores para la búsqueda semántica (que es estática), pero creo una 'Tool' específica que consulta directamente el dataset de vendedores o una API en el momento en que el agente lo solicita. Así, el agente recibe la reputación 'en vivo' recuperada por ID, sin necesidad de generar nuevos embeddings para todo el dataset.
+Respuesta: 
+
+La reputación en Mercado Libre es altamente dinámica. Para asegurar que esté actualizada sin re-indexar los 100,000 ítems, el Context Engine utiliza el MCP para realizar un enriquecimiento en tiempo de ejecución. Mientras que la búsqueda semántica (Bloque 2) se hace sobre datos pre-indexados, la información del vendedor se obtiene mediante una consulta directa al Profile 360 (Bloque 1) usando el seller_id en el momento de la petición. Esto garantiza que el Agente de IA tome decisiones basadas en la reputación real del segundo actual, manteniendo la eficiencia del sistema.
 
 ---
 
